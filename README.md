@@ -34,148 +34,130 @@ Table:
 ```text
 workspace.retail_capstone.raw_online_retail
 
+```
 
-Lakehouse Architecture
+### Curated Layer
 
-The project follows a simple Lakehouse architecture with three layers:
-
-Source Data
-    ↓
-Raw Delta Table
-    ↓
-Curated Delta Table
-    ↓
-Summary Delta Tables
-1. Raw Layer
-
-The raw layer stores the original source data in Delta format.
-
-The purpose of the raw table is to preserve the original transaction data before applying business rules or cleaning logic.
-
-Raw table:
-
-workspace.retail_capstone.raw_online_retail
-
-In this layer, the source eCommerce data is saved as a Delta table using schema enforcement.
-
-2. Curated Layer
-
-The curated layer contains cleaned and transformed transaction data.
-
-Curated table:
-
-workspace.retail_capstone.curated_online_retail
+The curated table removes invalid rows and adds derived columns.
 
 Cleaning steps include:
 
-Removing records with null invoice numbers
-Removing records with null product codes
-Removing records with null product descriptions
-Removing records with null customer IDs
-Removing cancelled invoices
-Removing rows with zero or negative quantity
-Removing rows with zero or negative unit price
-Converting invoice date into timestamp format
-Creating a derived revenue column
+- Removing null invoice numbers
+- Removing null product codes
+- Removing null customer IDs
+- Removing cancelled invoices
+- Removing zero or negative quantity
+- Removing zero or negative unit price
+- Calculating revenue
 
-Revenue is calculated as:
+Table:
 
-revenue = quantity * unit_price
-3. Summary Layer
+```text
+workspace.retail_capstone.curated_online_retail
+```
 
-The summary layer contains business-ready analytical tables.
+### Summary Layer
 
-Summary tables created in this project:
+The project creates summary tables for analytics.
 
+Tables:
+
+```text
 workspace.retail_capstone.daily_country_revenue
 workspace.retail_capstone.product_revenue_summary
 workspace.retail_capstone.customer_summary
-Daily Country Revenue
+```
 
-This table calculates daily revenue by country.
+## Pipeline Steps
 
-Metrics:
+### 1. Ingest Raw Data
 
-Invoice date
-Country
-Total revenue
-Total orders
-Product Revenue Summary
+The source online retail data is loaded into a raw Delta table.  
+This layer preserves the original transaction data and acts as the landing zone.
 
-This table calculates product-level performance.
+### 2. Clean and Transform Data
 
-Metrics:
+The raw data is transformed using PySpark DataFrame operations such as:
 
-Stock code
-Product description
-Total revenue
-Total quantity sold
-Total orders
-Customer Summary
+- `select()`
+- `filter()`
+- `withColumn()`
 
-This table calculates customer-level purchasing behavior.
+Invalid records are removed, cancelled invoices are filtered out, and a new `revenue` column is created.
 
-Metrics:
+Revenue is calculated as:
 
-Customer ID
-Country
-Customer total revenue
-Customer total orders
-Customer total quantity purchased
-Incremental Processing with MERGE
+```text
+quantity * unit_price
+```
 
-This project uses MERGE INTO to simulate incremental data processing.
+### 3. Create Summary Tables
 
-The MERGE operation inserts new rows and updates existing rows.
+The curated data is aggregated using `groupBy()` and `agg()`.
+
+Summary tables include:
+
+- Daily revenue by country
+- Product revenue summary
+- Customer summary
+
+### 4. Incremental MERGE
+
+The project uses `MERGE INTO` to handle incremental updates.
 
 The match condition uses:
 
-InvoiceNo + StockCode
+```text
+invoice_no + stock_code
+```
 
-This is because one invoice can contain multiple products, so InvoiceNo alone is not unique enough.
+This is useful because one invoice can contain multiple products.
 
-The MERGE logic supports:
+If a matching row already exists, it is updated.  
+If no matching row exists, it is inserted.
 
-Insert path for new transaction lines
-Update path for existing transaction lines
-Duplicate retry handling from upstream systems
-Idempotent pipeline behavior
+This makes the pipeline idempotent and helps handle duplicate upstream retries.
 
-Delta Lake records the MERGE operation as a single atomic transaction in the Delta log. This means the table is not partially updated. Either the full MERGE succeeds or the table remains unchanged.
+### 5. Delta Lake Time Travel and Recovery
 
-Delta Lake Time Travel and Recovery
+Delta Lake history is checked using:
 
-This project includes Delta Lake recovery concepts using:
+```sql
+DESCRIBE HISTORY workspace.retail_capstone.raw_online_retail;
+```
 
-DESCRIBE HISTORY
-VERSION AS OF
-RESTORE TABLE
+Older versions can be queried using:
 
-These commands help audit and recover data after a bad load, incorrect merge, or accidental overwrite.
-
-Example time travel query:
-
+```sql
 SELECT *
 FROM workspace.retail_capstone.raw_online_retail
 VERSION AS OF 0;
+```
 
-Example history query:
+A restore command is documented as part of the recovery runbook:
 
-DESCRIBE HISTORY workspace.retail_capstone.raw_online_retail;
-
-Example restore command:
-
+```sql
 RESTORE TABLE workspace.retail_capstone.raw_online_retail
 TO VERSION AS OF 0;
+```
 
-In this project, the restore command is documented but not executed because the current table is valid.
+The restore command should only be executed when recovery is actually required.
 
-Workflow Plan
+## Delta Lake Recovery
 
-The pipeline is designed as a multi-task Databricks Job.
+The project includes a recovery runbook using:
 
-Recommended task flow:
+- `DESCRIBE HISTORY`
+- `VERSION AS OF`
+- `RESTORE TABLE`
 
+This demonstrates how Delta Lake supports auditing, time travel, and recovery through its append-only transaction log.
+
+## Workflow Plan
+
+The pipeline is designed as a multi-task Databricks Job:
+
+```text
 Ingest Raw Data
       ↓
 Clean Data
@@ -183,26 +165,43 @@ Clean Data
 Aggregate Metrics
       ↓
 Dashboard Refresh
+```
 
-Task design:
+Dedicated job compute is recommended for production scheduling because it provides reliability, isolation, and cost control.
 
-Task	Purpose
-Ingest Raw Data	Load source eCommerce data into a raw Delta table
-Clean Data	Remove invalid rows and create curated transaction data
-Aggregate Metrics	Build daily revenue, product summary, and customer summary tables
-Incremental MERGE	Insert new rows and update existing rows from staging data
-Dashboard Refresh	Refresh SQL queries for reporting users
+## Repository Structure
 
-Dedicated job compute is recommended for scheduled production pipelines because it provides a reliable and isolated runtime environment. It avoids conflicts with shared development clusters and can be configured specifically for the workload.
+```text
+databricks-ecommerce-lakehouse-capstone/
+│
+├── README.md
+├── notebooks/
+│   └── ecommerce_lakehouse_capstone.py
+│
+├── docs/
+│   ├── recovery_runbook.md
+│   └── workflow_plan.md
+│
+└── sql/
+    ├── dashboard_queries.sql
+    └── delta_time_travel.sql
+```
 
-SQL Dashboard Queries
+## Key SQL Files
 
-The project includes SQL queries for:
+### Dashboard Queries
 
-Daily revenue by country
-Product revenue summary
-Customer summary
-Delta table history
-Delta time travel validation
+The `sql/dashboard_queries.sql` file contains reporting queries for:
 
-These queries are stored in the sql/ folder.
+- Daily country revenue
+- Product revenue summary
+- Customer summary
+
+### Delta Time Travel Queries
+
+The `sql/delta_time_travel.sql` file contains queries for:
+
+- Checking Delta table history
+- Querying older table versions
+- Validating previous row counts
+- Documenting restore logic
