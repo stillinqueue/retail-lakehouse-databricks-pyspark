@@ -4,9 +4,12 @@
 
 This project demonstrates an end-to-end lakehouse pipeline built on Databricks using a real public eCommerce dataset.
 
-The pipeline loads online retail transaction data into a raw Delta table, cleans and transforms it with PySpark, creates curated and summary Delta tables, performs incremental upserts with `MERGE`, and documents recovery using Delta Lake time travel.
+The pipeline loads online retail transaction data into Delta tables, cleans and transforms it with PySpark, creates curated and summary analytics tables, performs incremental upserts with `MERGE`, and documents recovery using Delta Lake time travel.
 
-The project is being extended in phases. Phase 1 focuses on sales transaction analytics. Phase 2 extends the project into an inventory management pipeline using multiple data sources and medallion architecture.
+The project is extended in phases:
+
+- **Phase 1** focuses on sales transaction analytics.
+- **Phase 2** extends the project into an inventory management pipeline using multiple data sources and medallion architecture.
 
 ---
 
@@ -14,7 +17,7 @@ The project is being extended in phases. Phase 1 focuses on sales transaction an
 
 ### Phase 1: Sales Lakehouse Capstone
 
-The first phase of this project builds a Databricks Lakehouse pipeline for eCommerce sales transactions.
+The first phase builds a Databricks Lakehouse pipeline for eCommerce sales transactions.
 
 It includes:
 
@@ -70,7 +73,7 @@ Country
 
 Phase 2 extends the project with additional sample data sources.
 
-Planned sources:
+Sources:
 
 ```text
 Sales transactions
@@ -80,7 +83,7 @@ Supplier data
 Warehouse data
 ```
 
-These sources will be combined to support inventory analytics and stock management use cases.
+These sources are combined to support inventory analytics and stock management use cases.
 
 ---
 
@@ -98,7 +101,7 @@ These sources will be combined to support inventory analytics and stock manageme
 
 ---
 
-## Phase 1: Sales Lakehouse Pipeline
+# Phase 1: Sales Lakehouse Pipeline
 
 ## Lakehouse Layers
 
@@ -226,6 +229,175 @@ The restore command should only be executed when recovery is actually required.
 
 ---
 
+# Phase 2: Inventory Management Medallion Pipeline
+
+Phase 2 extends the project from sales analytics into inventory management.
+
+The goal is to combine sales, product, inventory, supplier, and warehouse data to answer business questions such as:
+
+- Which products are selling fast?
+- Which products are at risk of going out of stock?
+- Which products should be reordered?
+- What is the current value of inventory?
+- Which suppliers have longer lead times?
+- Which warehouses have low available stock?
+
+---
+
+## Phase 2 Medallion Architecture
+
+Phase 2 follows the Bronze, Silver, and Gold medallion architecture.
+
+```text
+Bronze → Silver → Gold
+```
+
+---
+
+## Bronze Layer
+
+The Bronze layer stores raw data from each source with minimal transformation.
+
+Bronze tables:
+
+```text
+workspace.retail_capstone.bronze_sales
+workspace.retail_capstone.bronze_products
+workspace.retail_capstone.bronze_inventory
+workspace.retail_capstone.bronze_suppliers
+workspace.retail_capstone.bronze_warehouses
+```
+
+Purpose of Bronze:
+
+- Preserve original source data
+- Store raw data safely in Delta format
+- Keep history for audit and reprocessing
+- Avoid applying business logic too early
+
+---
+
+## Silver Layer
+
+The Silver layer stores cleaned and standardized data.
+
+Silver tables:
+
+```text
+workspace.retail_capstone.silver_sales
+workspace.retail_capstone.silver_products
+workspace.retail_capstone.silver_inventory
+workspace.retail_capstone.silver_suppliers
+workspace.retail_capstone.silver_warehouses
+```
+
+Silver transformations include:
+
+- Standardizing column names
+- Casting data types
+- Removing invalid records
+- Removing duplicate records
+- Filtering cancelled transactions
+- Calculating revenue
+- Calculating available stock
+
+---
+
+## Gold Layer
+
+The Gold layer stores business-ready analytics tables.
+
+Gold tables:
+
+```text
+workspace.retail_capstone.gold_inventory_status
+workspace.retail_capstone.gold_product_sales_velocity
+workspace.retail_capstone.gold_stockout_risk
+workspace.retail_capstone.gold_reorder_recommendations
+workspace.retail_capstone.gold_inventory_value
+```
+
+Gold tables are designed for dashboards, reporting, and business decisions.
+
+---
+
+## Phase 2 Inventory KPIs
+
+The inventory management pipeline calculates the following KPIs:
+
+| KPI | Description |
+|---|---|
+| Current Stock | Units physically available in the warehouse |
+| Reserved Stock | Units already reserved for orders |
+| Available Stock | Current stock minus reserved stock |
+| Sales Velocity | Average quantity sold per day |
+| Days of Inventory Remaining | Available stock divided by average daily sales |
+| Stockout Risk | Risk level based on inventory remaining and supplier lead time |
+| Reorder Flag | Indicates whether a product should be reordered |
+| Recommended Reorder Quantity | Suggested reorder quantity based on product rules |
+| Inventory Value | Current stock multiplied by unit cost |
+
+---
+
+## Stockout Risk Logic
+
+Stockout risk is calculated using available stock, average daily sales, and supplier lead time.
+
+Example logic:
+
+```text
+If days_of_inventory_remaining <= lead_time_days:
+    High Risk
+
+If days_of_inventory_remaining <= lead_time_days + 7:
+    Medium Risk
+
+Otherwise:
+    Low Risk
+```
+
+If a product has no recent sales, it is marked as:
+
+```text
+No Recent Sales
+```
+
+---
+
+## Reorder Recommendation Logic
+
+A product is marked for reorder when available stock is less than or equal to the reorder level.
+
+Example logic:
+
+```text
+If available_stock <= reorder_level:
+    Reorder Needed
+
+Otherwise:
+    No Reorder Needed
+```
+
+The recommended reorder quantity comes from the product master data.
+
+---
+
+## Phase 2 Pipeline Flow
+
+```text
+Multiple Source Data
+        ↓
+Bronze Delta Tables
+        ↓
+Silver Cleaned Tables
+        ↓
+Gold Inventory KPI Tables
+        ↓
+Dashboards / Reports / Alerts
+```
+
+---
+
 ## Delta Lake Recovery
 
 The project includes a recovery runbook using:
@@ -260,148 +432,26 @@ Aggregate Metrics
 Dashboard Refresh
 ```
 
+Phase 2 workflow:
+
+```text
+Ingest Multiple Sources
+      ↓
+Create Bronze Tables
+      ↓
+Create Silver Tables
+      ↓
+Create Gold KPI Tables
+      ↓
+Dashboard / Alerts
+```
+
 Dedicated job compute is recommended for production scheduling because it provides reliability, isolation, and cost control.
 
 The workflow plan is available here:
 
 ```text
 docs/workflow_plan.md
-```
-
----
-
-## Phase 2: Inventory Management Pipeline
-
-Phase 2 extends the project from sales analytics into inventory management.
-
-The goal is to combine sales, product, inventory, supplier, and warehouse data to answer business questions such as:
-
-- Which products are selling fast?
-- Which products are at risk of going out of stock?
-- Which products should be reordered?
-- What is the current value of inventory?
-- Which suppliers have longer lead times?
-- Which warehouses have low available stock?
-
----
-
-## Phase 2 Medallion Architecture
-
-Phase 2 will follow the Bronze, Silver, and Gold medallion architecture.
-
-### Bronze Layer
-
-The Bronze layer stores raw data from each source with minimal transformation.
-
-Planned Bronze tables:
-
-```text
-workspace.retail_capstone.bronze_sales
-workspace.retail_capstone.bronze_products
-workspace.retail_capstone.bronze_inventory
-workspace.retail_capstone.bronze_suppliers
-workspace.retail_capstone.bronze_warehouses
-```
-
-Purpose of Bronze:
-
-- Preserve original source data
-- Store raw data safely in Delta format
-- Keep history for audit and reprocessing
-- Avoid applying business logic too early
-
-### Silver Layer
-
-The Silver layer stores cleaned and standardized data.
-
-Planned Silver tables:
-
-```text
-workspace.retail_capstone.silver_sales
-workspace.retail_capstone.silver_products
-workspace.retail_capstone.silver_inventory
-workspace.retail_capstone.silver_suppliers
-workspace.retail_capstone.silver_warehouses
-```
-
-Silver transformations include:
-
-- Standardizing column names
-- Casting data types
-- Removing invalid records
-- Removing duplicate records
-- Filtering cancelled transactions
-- Calculating revenue
-- Calculating available stock
-
-### Gold Layer
-
-The Gold layer stores business-ready analytics tables.
-
-Planned Gold tables:
-
-```text
-workspace.retail_capstone.gold_inventory_status
-workspace.retail_capstone.gold_product_sales_velocity
-workspace.retail_capstone.gold_stockout_risk
-workspace.retail_capstone.gold_reorder_recommendations
-workspace.retail_capstone.gold_inventory_value
-```
-
-Gold tables are designed for dashboards, reporting, and business decisions.
-
----
-
-## Phase 2 Inventory KPIs
-
-The inventory management pipeline will calculate the following KPIs:
-
-| KPI | Description |
-|---|---|
-| Current Stock | Units physically available in the warehouse |
-| Reserved Stock | Units already reserved for orders |
-| Available Stock | Current stock minus reserved stock |
-| Sales Velocity | Average quantity sold per day |
-| Days of Inventory Remaining | Available stock divided by average daily sales |
-| Stockout Risk | Risk level based on inventory remaining and supplier lead time |
-| Reorder Flag | Indicates whether a product should be reordered |
-| Inventory Value | Current stock multiplied by unit cost |
-| Slow-Moving Products | Products with low sales activity |
-| Fast-Moving Products | Products with high sales activity |
-
----
-
-## Stockout Risk Logic
-
-Stockout risk is calculated using available stock, average daily sales, and supplier lead time.
-
-Example logic:
-
-```text
-If days_of_inventory_remaining <= lead_time_days:
-    High Risk
-
-If days_of_inventory_remaining <= lead_time_days + 7:
-    Medium Risk
-
-Otherwise:
-    Low Risk
-```
-
----
-
-## Phase 2 Pipeline Flow
-
-```text
-Multiple Source Data
-        ↓
-Bronze Delta Tables
-        ↓
-Silver Cleaned Tables
-        ↓
-Gold Inventory KPI Tables
-        ↓
-Dashboards / Reports / Alerts
 ```
 
 ---
@@ -424,6 +474,16 @@ The `sql/delta_time_travel.sql` file contains queries for:
 - Querying older table versions
 - Validating previous row counts
 - Documenting restore logic
+
+### Inventory KPI Queries
+
+The `sql/inventory_kpi_queries.sql` file contains reporting queries for:
+
+- Inventory status
+- Product sales velocity
+- Stockout risk
+- Reorder recommendations
+- Inventory value
 
 ---
 
@@ -518,10 +578,18 @@ databricks-ecommerce-lakehouse-capstone/
 - Workflow plan
 - Phase 2 architecture document
 - Phase 2 data quality rules
+- Phase 2 sample data sources
+- Bronze layer implementation
+- Silver layer implementation
+- Gold inventory KPI tables
+- Inventory KPI SQL queries
 
-### In Progress
+### Possible Future Improvements
 
-- Phase 2 inventory management pipeline
-- Bronze/Silver/Gold implementation
-- Inventory KPI tables
-- Reorder recommendation logic
+- Convert the pipeline into Delta Live Tables
+- Add automated data quality expectations
+- Add streaming ingestion with Spark Structured Streaming
+- Add dashboard visualizations in Databricks SQL
+- Add product recommendation features
+- Add MLflow tracking for inventory forecasting or recommendation models
+- Add CI/CD workflow for notebook deployment
