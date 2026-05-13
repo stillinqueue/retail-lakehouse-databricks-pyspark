@@ -397,15 +397,3 @@ This inventory management pipeline can help an eCommerce company:
 - Build reliable inventory dashboards
 - Support data-driven operations
 
-## Interview Relevance
-
-This project extension demonstrates practical data engineering skills relevant to modern eCommerce analytics:
-
-- Multiple data source ingestion
-- Medallion architecture
-- Delta Lake table design
-- PySpark transformations
-- Data quality checks
-- Incremental processing with MERGE
-- Inventory KPI modeling
-- Production-style pipeline design
