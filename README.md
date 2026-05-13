@@ -479,7 +479,10 @@ databricks-ecommerce-lakehouse-capstone/
 │
 ├── README.md
 ├── notebooks/
-│   └── ecommerce_lakehouse_capstone.py
+│   ├── ecommerce_lakehouse_capstone.py
+│   ├── 01_bronze_ingestion.py
+│   ├── 02_silver_cleaning.py
+│   └── 03_gold_inventory_kpis.py
 │
 ├── docs/
 │   ├── architecture.md
@@ -489,7 +492,8 @@ databricks-ecommerce-lakehouse-capstone/
 │
 ├── sql/
 │   ├── dashboard_queries.sql
-│   └── delta_time_travel.sql
+│   ├── delta_time_travel.sql
+│   └── inventory_kpi_queries.sql
 │
 └── data_samples/
     ├── products_sample.csv
