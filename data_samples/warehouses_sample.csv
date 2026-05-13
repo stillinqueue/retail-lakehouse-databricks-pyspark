@@ -1,0 +1,4 @@
+warehouse_id,warehouse_name,warehouse_country,region,capacity
+WH001,Nuremberg Fulfillment Center,Germany,Bavaria,50000
+WH002,Berlin Distribution Hub,Germany,Berlin,40000
+WH003,Cologne Regional Warehouse,Germany,North Rhine-Westphalia,35000
