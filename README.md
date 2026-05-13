@@ -478,7 +478,6 @@ Defines data quality rules for sales, product, inventory, supplier, and warehous
 databricks-ecommerce-lakehouse-capstone/
 │
 ├── README.md
-│
 ├── notebooks/
 │   └── ecommerce_lakehouse_capstone.py
 │
@@ -488,9 +487,15 @@ databricks-ecommerce-lakehouse-capstone/
 │   ├── recovery_runbook.md
 │   └── workflow_plan.md
 │
-└── sql/
-    ├── dashboard_queries.sql
-    └── delta_time_travel.sql
+├── sql/
+│   ├── dashboard_queries.sql
+│   └── delta_time_travel.sql
+│
+└── data_samples/
+    ├── products_sample.csv
+    ├── inventory_sample.csv
+    ├── suppliers_sample.csv
+    └── warehouses_sample.csv
 ```
 
 ---
