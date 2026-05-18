@@ -541,19 +541,30 @@ databricks-ecommerce-lakehouse-capstone/
 ├── notebooks/
 │   ├── ecommerce_lakehouse_capstone.py
 │   ├── 01_bronze_ingestion.py
+│   ├── 01_bronze_ingestion.ipynb
 │   ├── 02_silver_cleaning.py
-│   └── 03_gold_inventory_kpis.py
+│   ├── 02_silver_cleaning.ipynb
+│   ├── 03_gold_inventory_kpis.py
+│   ├── 03_gold_inventory_kpis.ipynb
+│   ├── 04_ml_stockout_and_reorder_training.py
+│   ├── 04_ml_stockout_and_reorder_training.ipynb
+│   ├── 05_model_serving_test.py
+│   └── 05_model_serving_test.ipynb
 │
 ├── docs/
 │   ├── architecture.md
 │   ├── data_quality_rules.md
 │   ├── recovery_runbook.md
-│   └── workflow_plan.md
+│   ├── workflow_plan.md
+│   ├── ml_modeling_plan.md
+│   ├── model_serving.md
+│   └── enterprise_readiness.md
 │
 ├── sql/
 │   ├── dashboard_queries.sql
 │   ├── delta_time_travel.sql
-│   └── inventory_kpi_queries.sql
+│   ├── inventory_kpi_queries.sql
+│   └── ml_feature_queries.sql
 │
 └── data_samples/
     ├── products_sample.csv
