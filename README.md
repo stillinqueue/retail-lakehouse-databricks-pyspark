@@ -10,7 +10,7 @@ The project is extended in phases:
 
 - **Phase 1** focuses on sales transaction analytics.
 - **Phase 2** extends the project into an inventory management pipeline using multiple data sources and medallion architecture.
-- **Phase 3** extends the project with MLflow experiment tracking, model registration, and model serving tests.
+- **Phase 3** extends the project with MLflow experiment tracking, model registration, and Databricks Model Serving.
 
 ---
 
@@ -62,7 +62,9 @@ It adds:
 - Feature importance graphs
 - Unity Catalog Model Registry
 - Model aliases: `@challenger` and `@champion`
+- Databricks Model Serving endpoint
 - Model serving test notebook
+- Endpoint request and response documentation
 
 ---
 
@@ -134,7 +136,7 @@ The ML training data is synthetically expanded from the inventory business rules
 - Pandas
 - Matplotlib
 - Unity Catalog Model Registry
-- Databricks model serving workflow
+- Databricks Model Serving
 
 ---
 
@@ -439,7 +441,7 @@ Dashboards / Reports / Alerts
 
 Phase 3 extends the inventory pipeline with machine learning.
 
-The goal is to demonstrate how Gold tables from the lakehouse can be used to train, track, compare, register, and test machine learning models.
+The goal is to demonstrate how Gold tables from the lakehouse can be used to train, track, compare, register, and serve machine learning models.
 
 ---
 
@@ -652,6 +654,51 @@ models:/workspace.retail_capstone.reorder_flag_classifier@champion
 
 This confirms that registered champion models can be loaded and used for inference.
 
+### 9. Databricks Model Serving Endpoint
+
+The stockout risk classifier is deployed to a Databricks Model Serving endpoint.
+
+Endpoint name:
+
+```text
+stockout-risk-classifier-endpoint
+```
+
+Served model:
+
+```text
+workspace.retail_capstone.stockout_risk_classifier@champion
+```
+
+The endpoint is tested with sample inventory feature records and returns stockout risk predictions.
+
+---
+
+## Model Serving Evidence
+
+The stockout risk classifier was deployed to a Databricks Model Serving endpoint.
+
+Endpoint name:
+
+```text
+stockout-risk-classifier-endpoint
+```
+
+Served model:
+
+```text
+workspace.retail_capstone.stockout_risk_classifier@champion
+```
+
+Evidence screenshots:
+
+```text
+images/model_serving_endpoint_ready.png
+images/stockout_endpoint_response.png
+```
+
+The endpoint was tested with sample inventory feature records and returned stockout risk predictions.
+
 ---
 
 ## Phase 3 Pipeline Flow
@@ -670,6 +717,8 @@ Model Comparison
 Unity Catalog Model Registry
         ↓
 Champion Model Serving Test
+        ↓
+Databricks Model Serving Endpoint
 ```
 
 ---
@@ -734,6 +783,8 @@ Train and Track Models
 Register Best Models
       ↓
 Test Champion Models
+      ↓
+Deploy Model Serving Endpoint
 ```
 
 Dedicated job compute is recommended for production scheduling because it provides reliability, isolation, and cost control.
@@ -901,11 +952,15 @@ databricks-ecommerce-lakehouse-capstone/
 │   ├── inventory_kpi_queries.sql
 │   └── ml_feature_queries.sql
 │
-└── data_samples/
-    ├── products_sample.csv
-    ├── inventory_sample.csv
-    ├── suppliers_sample.csv
-    └── warehouses_sample.csv
+├── data_samples/
+│   ├── products_sample.csv
+│   ├── inventory_sample.csv
+│   ├── suppliers_sample.csv
+│   └── warehouses_sample.csv
+│
+└── images/
+    ├── model_serving_endpoint_ready.png
+    └── stockout_endpoint_response.png
 ```
 
 ---
@@ -942,6 +997,10 @@ databricks-ecommerce-lakehouse-capstone/
 - Unity Catalog model registration
 - Model aliases: `@challenger` and `@champion`
 - Champion model serving test notebook
+- Databricks Model Serving endpoint created
+- Endpoint tested with sample request payload
+- Endpoint response documented
+- Model serving screenshots added
 
 ### Possible Future Improvements
 
@@ -949,11 +1008,12 @@ databricks-ecommerce-lakehouse-capstone/
 - Add automated data quality expectations
 - Add streaming ingestion with Spark Structured Streaming
 - Add Databricks SQL dashboards
-- Add model serving endpoints through Databricks Model Serving UI
-- Add endpoint request and response screenshots
+- Add reorder model serving endpoint
 - Add MLflow experiment screenshots
 - Add architecture diagram image
 - Add product recommendation features
 - Add inventory forecasting model
 - Add CI/CD workflow for notebook deployment
 - Add model monitoring and drift detection
+- Add Hugging Face or local MLflow model export workflow
+- Add sovereign/local inference comparison as an advanced extension
