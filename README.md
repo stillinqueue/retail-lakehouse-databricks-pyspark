@@ -10,6 +10,7 @@ The project is extended in phases:
 
 - **Phase 1** focuses on sales transaction analytics.
 - **Phase 2** extends the project into an inventory management pipeline using multiple data sources and medallion architecture.
+- **Phase 3** extends the project with MLflow experiment tracking, model registration, and model serving tests.
 
 ---
 
@@ -45,6 +46,23 @@ It adds:
 - Inventory KPIs
 - Stockout risk logic
 - Reorder recommendation logic
+
+### Phase 3: MLflow Classification and Model Serving
+
+The third phase extends the inventory pipeline with machine learning.
+
+It adds:
+
+- ML training feature tables
+- Exploratory data analysis graphs
+- Stockout risk classification model
+- Reorder flag classification model
+- MLflow experiment tracking
+- Model comparison using accuracy and weighted F1 score
+- Feature importance graphs
+- Unity Catalog Model Registry
+- Model aliases: `@challenger` and `@champion`
+- Model serving test notebook
 
 ---
 
@@ -85,6 +103,19 @@ Warehouse data
 
 These sources are combined to support inventory analytics and stock management use cases.
 
+### Phase 3 ML Training Data
+
+Phase 3 uses Gold inventory KPI tables from Phase 2 to create ML training feature tables.
+
+ML training tables:
+
+```text
+workspace.retail_capstone.ml_stockout_training_data
+workspace.retail_capstone.ml_reorder_training_data
+```
+
+The ML training data is synthetically expanded from the inventory business rules for learning and demonstration purposes.
+
 ---
 
 ## Technologies Used
@@ -98,6 +129,12 @@ These sources are combined to support inventory analytics and stock management u
 - `MERGE INTO`
 - Medallion architecture
 - Databricks Jobs workflow planning
+- MLflow
+- scikit-learn
+- Pandas
+- Matplotlib
+- Unity Catalog Model Registry
+- Databricks model serving workflow
 
 ---
 
@@ -398,6 +435,245 @@ Dashboards / Reports / Alerts
 
 ---
 
+# Phase 3: MLflow Classification and Model Serving
+
+Phase 3 extends the inventory pipeline with machine learning.
+
+The goal is to demonstrate how Gold tables from the lakehouse can be used to train, track, compare, register, and test machine learning models.
+
+---
+
+## Phase 3 ML Use Cases
+
+Two classification models are trained.
+
+### Model 1: Stockout Risk Classifier
+
+This model predicts the stockout risk level of a product.
+
+Target column:
+
+```text
+stockout_risk_level
+```
+
+Example classes:
+
+```text
+High Risk
+Medium Risk
+Low Risk
+No Recent Sales
+```
+
+Example features:
+
+```text
+available_stock
+avg_daily_sales
+days_of_inventory_remaining
+lead_time_days
+reliability_score
+category
+warehouse_id
+```
+
+Business value:
+
+- Helps identify products likely to go out of stock
+- Supports proactive inventory planning
+- Helps prioritize replenishment actions
+
+---
+
+### Model 2: Reorder Flag Classifier
+
+This model predicts whether a product should be reordered.
+
+Target column:
+
+```text
+reorder_flag
+```
+
+Example classes:
+
+```text
+Reorder Needed
+No Reorder Needed
+```
+
+Example features:
+
+```text
+available_stock
+reorder_level
+reorder_quantity
+lead_time_days
+category
+warehouse_id
+```
+
+Business value:
+
+- Supports automated reorder decisions
+- Helps inventory teams prioritize purchase orders
+- Reduces manual review effort
+
+---
+
+## Phase 3 ML Pipeline Steps
+
+### 1. Load Gold Tables
+
+The ML notebook loads Gold inventory tables created in Phase 2.
+
+Main source tables:
+
+```text
+workspace.retail_capstone.gold_stockout_risk
+workspace.retail_capstone.gold_reorder_recommendations
+workspace.retail_capstone.gold_inventory_value
+workspace.retail_capstone.gold_product_sales_velocity
+```
+
+### 2. Create ML Training Tables
+
+The project creates ML feature tables:
+
+```text
+workspace.retail_capstone.ml_stockout_training_data
+workspace.retail_capstone.ml_reorder_training_data
+```
+
+Because the sample inventory data is small, the training data is synthetically expanded from inventory business rules for learning and demonstration purposes.
+
+### 3. Exploratory Data Analysis
+
+The ML training notebook includes graphs for:
+
+- Stockout risk label distribution
+- Reorder flag distribution
+- Available stock distribution
+- Average daily sales distribution
+- Days of inventory remaining distribution
+- Available stock vs average daily sales by risk level
+
+These visualizations help explain the ML problem and business scenario.
+
+### 4. MLflow Experiment Tracking
+
+MLflow is used to track model experiments.
+
+The project trains three model configurations for the stockout classifier:
+
+- Logistic Regression
+- Random Forest Classifier
+- Gradient Boosting Classifier
+
+The project also trains three model configurations for the reorder classifier:
+
+- Logistic Regression
+- Random Forest Classifier
+- Gradient Boosting Classifier
+
+That gives six MLflow runs in total.
+
+Tracked metrics include:
+
+```text
+accuracy
+f1_weighted
+```
+
+Weighted F1 score is used because classification datasets can become imbalanced.
+
+### 5. Model Comparison
+
+The notebook compares MLflow runs using:
+
+- Model type
+- Hyperparameters
+- Accuracy
+- Weighted F1 score
+
+The best model for each use case is selected based on weighted F1 score.
+
+### 6. Feature Importance
+
+Feature importance graphs are created to explain which input features influence model predictions.
+
+For stockout risk, important features may include:
+
+- Days of inventory remaining
+- Available stock
+- Average daily sales
+- Supplier lead time
+- Supplier reliability
+
+For reorder prediction, important features may include:
+
+- Available stock
+- Reorder level
+- Reorder quantity
+- Supplier lead time
+
+### 7. Unity Catalog Model Registry
+
+The best models are registered in Unity Catalog Model Registry.
+
+Registered model names:
+
+```text
+workspace.retail_capstone.stockout_risk_classifier
+workspace.retail_capstone.reorder_flag_classifier
+```
+
+Model aliases are used for lifecycle management:
+
+```text
+@challenger
+@champion
+```
+
+The new model version is first assigned the `@challenger` alias.  
+After validation, it is promoted to the `@champion` alias.
+
+### 8. Model Serving Test
+
+The serving test notebook loads the `@champion` models and sends sample input records for prediction.
+
+Model URIs:
+
+```text
+models:/workspace.retail_capstone.stockout_risk_classifier@champion
+models:/workspace.retail_capstone.reorder_flag_classifier@champion
+```
+
+This confirms that registered champion models can be loaded and used for inference.
+
+---
+
+## Phase 3 Pipeline Flow
+
+```text
+Gold Inventory KPI Tables
+        ↓
+ML Feature Tables
+        ↓
+EDA and Feature Analysis
+        ↓
+MLflow Experiments
+        ↓
+Model Comparison
+        ↓
+Unity Catalog Model Registry
+        ↓
+Champion Model Serving Test
+```
+
+---
+
 ## Delta Lake Recovery
 
 The project includes a recovery runbook using:
@@ -446,6 +722,20 @@ Create Gold KPI Tables
 Dashboard / Alerts
 ```
 
+Phase 3 workflow:
+
+```text
+Gold KPI Tables
+      ↓
+Create ML Feature Tables
+      ↓
+Train and Track Models
+      ↓
+Register Best Models
+      ↓
+Test Champion Models
+```
+
 Dedicated job compute is recommended for production scheduling because it provides reliability, isolation, and cost control.
 
 The workflow plan is available here:
@@ -485,6 +775,15 @@ The `sql/inventory_kpi_queries.sql` file contains reporting queries for:
 - Reorder recommendations
 - Inventory value
 
+### ML Feature Queries
+
+The `sql/ml_feature_queries.sql` file contains queries for:
+
+- Stockout ML training features
+- Reorder ML training features
+- Stockout label distribution
+- Reorder label distribution
+
 ---
 
 ## Documentation
@@ -496,6 +795,9 @@ docs/recovery_runbook.md
 docs/workflow_plan.md
 docs/architecture.md
 docs/data_quality_rules.md
+docs/ml_modeling_plan.md
+docs/model_serving.md
+docs/enterprise_readiness.md
 ```
 
 ### Recovery Runbook
@@ -529,6 +831,39 @@ docs/data_quality_rules.md
 ```
 
 Defines data quality rules for sales, product, inventory, supplier, and warehouse data.
+
+### ML Modeling Plan
+
+```text
+docs/ml_modeling_plan.md
+```
+
+Explains the Phase 3 ML use cases, features, targets, experiment tracking plan, and model selection approach.
+
+### Model Serving Plan
+
+```text
+docs/model_serving.md
+```
+
+Explains how the registered models can be served and tested for inference.
+
+### Enterprise Readiness
+
+```text
+docs/enterprise_readiness.md
+```
+
+Explains workspace organization, Git integration, reproducibility, and production readiness considerations.
+
+---
+
+## Notebook Formats
+
+The `notebooks/` folder includes both `.py` and `.ipynb` versions of the Databricks notebooks.
+
+- `.py` files are useful for source control and code review.
+- `.ipynb` files are useful for viewing notebook outputs, markdown, and charts.
 
 ---
 
@@ -594,13 +929,31 @@ databricks-ecommerce-lakehouse-capstone/
 - Silver layer implementation
 - Gold inventory KPI tables
 - Inventory KPI SQL queries
+- Phase 3 ML modeling plan
+- Phase 3 model serving plan
+- Phase 3 enterprise readiness notes
+- ML training feature tables
+- EDA graphs for ML understanding
+- Stockout risk classification model
+- Reorder flag classification model
+- Six MLflow experiment runs
+- Model comparison using weighted F1 score
+- Feature importance graphs
+- Unity Catalog model registration
+- Model aliases: `@challenger` and `@champion`
+- Champion model serving test notebook
 
 ### Possible Future Improvements
 
 - Convert the pipeline into Delta Live Tables
 - Add automated data quality expectations
 - Add streaming ingestion with Spark Structured Streaming
-- Add dashboard visualizations in Databricks SQL
+- Add Databricks SQL dashboards
+- Add model serving endpoints through Databricks Model Serving UI
+- Add endpoint request and response screenshots
+- Add MLflow experiment screenshots
+- Add architecture diagram image
 - Add product recommendation features
-- Add MLflow tracking for inventory forecasting or recommendation models
+- Add inventory forecasting model
 - Add CI/CD workflow for notebook deployment
+- Add model monitoring and drift detection
