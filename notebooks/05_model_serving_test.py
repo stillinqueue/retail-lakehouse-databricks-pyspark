@@ -278,6 +278,158 @@
     "\n",
     "This confirms that the registered champion models can be loaded and used for inference."
    ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {},
+     "inputWidgets": {},
+     "nuid": "13cf78cd-372a-46ee-9806-bd8d67d6eead",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "source": [
+    "# Databricks Model Serving Endpoint Test\n",
+    "\n",
+    "This section tests the deployed Databricks Model Serving endpoint for the stockout risk classifier.\n",
+    "\n",
+    "Endpoint name:\n",
+    "\n",
+    "`stockout-risk-classifier-endpoint`"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "inputWidgets": {},
+     "nuid": "ac8ea8ab-d0ab-4590-80fc-536bd08d9e0c",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "outputs": [],
+   "source": [
+    "import requests\n",
+    "import json\n",
+    "import os"
+   ]
+  },
+  {
+   "cell_type": "code",
+   "execution_count": 0,
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {
+      "byteLimit": 2048000,
+      "rowLimit": 10000
+     },
+     "inputWidgets": {},
+     "nuid": "aaafc5ce-9893-49e2-a811-3fef2a6c1f28",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "outputs": [
+    {
+     "output_type": "stream",
+     "name": "stdout",
+     "output_type": "stream",
+     "text": [
+      "Status code: 200\nResponse:\n{\"predictions\": [\"High Risk\", \"Low Risk\"]}\n"
+     ]
+    }
+   ],
+   "source": [
+    "DATABRICKS_HOST = \"https://<your-databricks-workspace-url>\"\n",
+    "DATABRICKS_TOKEN = \"<your-databricks-personal-access-token>\"\n",
+    "\n",
+    "endpoint_name = \"stockout-risk-classifier-endpoint\"\n",
+    "\n",
+    "url = f\"{DATABRICKS_HOST}/serving-endpoints/{endpoint_name}/invocations\"\n",
+    "\n",
+    "headers = {\n",
+    "    \"Authorization\": f\"Bearer {DATABRICKS_TOKEN}\",\n",
+    "    \"Content-Type\": \"application/json\"\n",
+    "}\n",
+    "\n",
+    "payload = {\n",
+    "    \"dataframe_records\": [\n",
+    "        {\n",
+    "            \"available_stock\": 20,\n",
+    "            \"avg_daily_sales\": 8.5,\n",
+    "            \"days_of_inventory_remaining\": 2.35,\n",
+    "            \"lead_time_days\": 7,\n",
+    "            \"reliability_score\": 0.91,\n",
+    "            \"category\": \"Home Decor\",\n",
+    "            \"warehouse_id\": \"WH001\"\n",
+    "        },\n",
+    "        {\n",
+    "            \"available_stock\": 200,\n",
+    "            \"avg_daily_sales\": 3.0,\n",
+    "            \"days_of_inventory_remaining\": 66.67,\n",
+    "            \"lead_time_days\": 7,\n",
+    "            \"reliability_score\": 0.94,\n",
+    "            \"category\": \"Home Decor\",\n",
+    "            \"warehouse_id\": \"WH001\"\n",
+    "        }\n",
+    "    ]\n",
+    "}\n",
+    "\n",
+    "response = requests.post(url, headers=headers, data=json.dumps(payload))\n",
+    "\n",
+    "print(\"Status code:\", response.status_code)\n",
+    "print(\"Response:\")\n",
+    "print(response.text)"
+   ]
+  },
+  {
+   "cell_type": "markdown",
+   "metadata": {
+    "application/vnd.databricks.v1+cell": {
+     "cellMetadata": {},
+     "inputWidgets": {},
+     "nuid": "dc09a0c0-b56b-4b4f-ad62-a15c71e0b538",
+     "showTitle": false,
+     "tableResultSettingsMap": {},
+     "title": ""
+    }
+   },
+   "source": [
+    "# Example curl Request\n",
+    "\n",
+    "The endpoint can also be tested using curl.\n",
+    "\n",
+    "Replace `<your-databricks-workspace-url>` and `<your-token>` before running.\n",
+    "\n",
+    "```bash\n",
+    "curl -X POST https://<your-databricks-workspace-url>/serving-endpoints/stockout-risk-classifier-endpoint/invocations \\\n",
+    "  -H \"Authorization: Bearer <your-token>\" \\\n",
+    "  -H \"Content-Type: application/json\" \\\n",
+    "  -d '{\n",
+    "    \"dataframe_records\": [\n",
+    "      {\n",
+    "        \"available_stock\": 20,\n",
+    "        \"avg_daily_sales\": 8.5,\n",
+    "        \"days_of_inventory_remaining\": 2.35,\n",
+    "        \"lead_time_days\": 7,\n",
+    "        \"reliability_score\": 0.91,\n",
+    "        \"category\": \"Home Decor\",\n",
+    "        \"warehouse_id\": \"WH001\"\n",
+    "      }\n",
+    "    ]\n",
+    "  }'"
+   ]
   }
  ],
  "metadata": {
