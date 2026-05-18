@@ -2,51 +2,28 @@
 
 ## Purpose
 
-This document explains how the trained machine learning models from Phase 3 can be served for real-time inference.
+This document explains how the trained machine learning models can be served for inference.
 
-Phase 3 extends the Databricks eCommerce Lakehouse project with MLflow experiment tracking, Unity Catalog Model Registry, and Databricks Model Serving.
+The serving workflow is part of Phase 3 of the Databricks eCommerce Lakehouse project.
 
-The goal is to show how models trained from lakehouse Gold tables can be registered, promoted, deployed, and tested by external applications.
+Phase 3 extends the project from lakehouse data engineering into machine learning by training, registering, and testing classification models for inventory management.
 
 ---
 
 ## Models
 
-This phase includes two classification models.
+The project includes two classification models:
 
-| Model | Type | Purpose |
-|---|---|---|
-| Stockout Risk Classifier | Multi-class classification | Predict whether a product is at High, Medium, Low, or No Recent Sales stockout risk |
-| Reorder Flag Classifier | Binary classification | Predict whether a product should be reordered |
-
----
-
-## Source Data
-
-The models are trained from Gold inventory tables created in Phase 2.
-
-Main source tables:
-
-```text
-workspace.retail_capstone.gold_stockout_risk
-workspace.retail_capstone.gold_reorder_recommendations
-workspace.retail_capstone.gold_product_sales_velocity
-workspace.retail_capstone.gold_inventory_value
-```
-
-These tables are produced from the medallion pipeline:
-
-```text
-Bronze → Silver → Gold → ML Training Data
-```
+1. Stockout Risk Classifier
+2. Reorder Flag Classifier
 
 ---
 
 ## Model 1: Stockout Risk Classifier
 
-### Prediction Goal
+### Purpose
 
-Predict the stockout risk level for a product in a warehouse.
+The stockout risk classifier predicts the risk level of a product going out of stock.
 
 ### Target Column
 
@@ -54,7 +31,7 @@ Predict the stockout risk level for a product in a warehouse.
 stockout_risk_level
 ```
 
-### Possible Output Classes
+### Example Classes
 
 ```text
 High Risk
@@ -63,7 +40,7 @@ Low Risk
 No Recent Sales
 ```
 
-### Example Input Features
+### Example Features
 
 ```text
 available_stock
@@ -75,17 +52,24 @@ category
 warehouse_id
 ```
 
-### Example Business Use Case
+### Business Use Case
 
-An inventory dashboard or operational application can call the model to predict which products are likely to go out of stock soon.
+This model helps inventory teams identify products that may go out of stock before supplier replenishment arrives.
+
+The prediction can support:
+
+- Inventory alerts
+- Replenishment planning
+- Purchase order prioritization
+- Dashboard risk indicators
 
 ---
 
 ## Model 2: Reorder Flag Classifier
 
-### Prediction Goal
+### Purpose
 
-Predict whether a product needs to be reordered.
+The reorder flag classifier predicts whether a product should be reordered.
 
 ### Target Column
 
@@ -93,14 +77,14 @@ Predict whether a product needs to be reordered.
 reorder_flag
 ```
 
-### Possible Output Classes
+### Example Classes
 
 ```text
 Reorder Needed
 No Reorder Needed
 ```
 
-### Example Input Features
+### Example Features
 
 ```text
 available_stock
@@ -111,104 +95,128 @@ category
 warehouse_id
 ```
 
-### Example Business Use Case
+### Business Use Case
 
-A replenishment workflow can call the model to decide which products should be prioritized for purchase orders.
+This model supports automated replenishment decisions.
+
+The prediction can support:
+
+- Reorder recommendations
+- Inventory planning
+- Supplier coordination
+- Operational decision-making
+
+---
+
+## Source Tables
+
+The models are trained from ML feature tables created from the Gold inventory layer.
+
+```text
+workspace.retail_capstone.ml_stockout_training_data
+workspace.retail_capstone.ml_reorder_training_data
+```
+
+These ML feature tables are derived from Gold tables such as:
+
+```text
+workspace.retail_capstone.gold_stockout_risk
+workspace.retail_capstone.gold_reorder_recommendations
+workspace.retail_capstone.gold_inventory_value
+workspace.retail_capstone.gold_product_sales_velocity
+```
 
 ---
 
 ## Model Registry
 
-After training and experiment comparison, the selected model is registered in the Unity Catalog Model Registry.
+The best models from MLflow experiments are registered in Unity Catalog Model Registry.
 
-Example model names:
+Registered model names:
 
 ```text
 workspace.retail_capstone.stockout_risk_classifier
 workspace.retail_capstone.reorder_flag_classifier
 ```
 
-A three-level namespace is used:
-
-```text
-catalog.schema.model_name
-```
-
-For this project:
-
-```text
-catalog = workspace
-schema = retail_capstone
-model_name = stockout_risk_classifier
-model_name = reorder_flag_classifier
-```
-
 ---
 
-## Model Lifecycle with Aliases
+## Model Aliases
 
-Unity Catalog uses model aliases instead of the older legacy model stages.
+Unity Catalog model aliases are used to manage the model lifecycle.
 
-Recommended aliases:
+Aliases used:
 
 ```text
 @challenger
 @champion
 ```
 
-Lifecycle process:
+The normal lifecycle process is:
 
 ```text
-New trained model version
-        ↓
-Register in Unity Catalog
-        ↓
-Assign @challenger alias
-        ↓
-Validate predictions and metrics
-        ↓
-Promote to @champion
-        ↓
-Deploy champion model to serving endpoint
+New model version
+      ↓
+@challenger
+      ↓
+Validation
+      ↓
+@champion
 ```
 
-### Alias Meaning
+The `@challenger` alias marks a new model candidate.
 
-| Alias | Meaning |
-|---|---|
-| `@challenger` | A new candidate model under validation |
-| `@champion` | The approved production model |
+The `@champion` alias marks the validated model version that should be used for inference or serving.
 
 ---
 
-## Serving Endpoint
+## Notebook-Based Serving Test
 
-The champion model can be deployed using Databricks Model Serving.
+Before creating a real-time serving endpoint, the champion models are tested inside a Databricks notebook.
 
-Example endpoint names:
+Notebook:
 
 ```text
-stockout-risk-classifier-endpoint
-reorder-flag-classifier-endpoint
+notebooks/05_model_serving_test.py
+notebooks/05_model_serving_test.ipynb
 ```
 
-The serving endpoint allows external applications to send input data and receive predictions through a REST API.
+The notebook loads the registered champion models using MLflow.
+
+### Stockout Champion Model URI
+
+```text
+models:/workspace.retail_capstone.stockout_risk_classifier@champion
+```
+
+### Reorder Champion Model URI
+
+```text
+models:/workspace.retail_capstone.reorder_flag_classifier@champion
+```
 
 ---
 
-## Example Input: Stockout Risk Classifier
-
-A real-time application can send feature values like this:
+## Example Stockout Model Input
 
 ```json
 {
   "dataframe_records": [
     {
-      "available_stock": 25,
+      "available_stock": 20,
       "avg_daily_sales": 8.5,
-      "days_of_inventory_remaining": 2.9,
+      "days_of_inventory_remaining": 2.35,
       "lead_time_days": 7,
       "reliability_score": 0.91,
+      "category": "Home Decor",
+      "warehouse_id": "WH001"
+    },
+    {
+      "available_stock": 200,
+      "avg_daily_sales": 3.0,
+      "days_of_inventory_remaining": 66.67,
+      "lead_time_days": 7,
+      "reliability_score": 0.94,
       "category": "Home Decor",
       "warehouse_id": "WH001"
     }
@@ -218,27 +226,38 @@ A real-time application can send feature values like this:
 
 ---
 
-## Example Output: Stockout Risk Classifier
+## Example Stockout Model Output
 
 Example response:
 
 ```json
 {
-  "predictions": ["High Risk"]
+  "predictions": [
+    "High Risk",
+    "Low Risk"
+  ]
 }
 ```
 
-This means the model predicts that the product may run out of stock soon.
+The exact prediction may vary depending on the trained model version.
 
 ---
 
-## Example Input: Reorder Flag Classifier
+## Example Reorder Model Input
 
 ```json
 {
   "dataframe_records": [
     {
-      "available_stock": 25,
+      "available_stock": 30,
+      "reorder_level": 100,
+      "reorder_quantity": 300,
+      "lead_time_days": 7,
+      "category": "Home Decor",
+      "warehouse_id": "WH001"
+    },
+    {
+      "available_stock": 250,
       "reorder_level": 100,
       "reorder_quantity": 300,
       "lead_time_days": 7,
@@ -251,40 +270,109 @@ This means the model predicts that the product may run out of stock soon.
 
 ---
 
-## Example Output: Reorder Flag Classifier
+## Example Reorder Model Output
+
+Example response:
 
 ```json
 {
-  "predictions": ["Reorder Needed"]
+  "predictions": [
+    "Reorder Needed",
+    "No Reorder Needed"
+  ]
 }
 ```
 
-This means the model predicts that the product should be reordered.
+The exact prediction may vary depending on the trained model version.
 
 ---
 
-## Example Python Test
+# Databricks Model Serving Endpoint
 
-A Databricks notebook or external Python application can test the endpoint using `requests`.
+The stockout risk classifier can be deployed to a Databricks Model Serving endpoint.
+
+Endpoint name:
+
+```text
+stockout-risk-classifier-endpoint
+```
+
+Model served:
+
+```text
+workspace.retail_capstone.stockout_risk_classifier@champion
+```
+
+The endpoint exposes the registered champion model as a REST API that can be queried by external applications.
+
+---
+
+## Endpoint Request Format
+
+Example request body:
+
+```json
+{
+  "dataframe_records": [
+    {
+      "available_stock": 20,
+      "avg_daily_sales": 8.5,
+      "days_of_inventory_remaining": 2.35,
+      "lead_time_days": 7,
+      "reliability_score": 0.91,
+      "category": "Home Decor",
+      "warehouse_id": "WH001"
+    }
+  ]
+}
+```
+
+---
+
+## Endpoint Response Format
+
+Example response:
+
+```json
+{
+  "predictions": [
+    "High Risk"
+  ]
+}
+```
+
+The exact prediction may vary depending on the trained model version.
+
+---
+
+## Python Endpoint Test
+
+The endpoint can be tested from Python using the `requests` library.
+
+Sensitive values such as workspace URL and access token should not be committed to GitHub.
 
 ```python
 import requests
 import json
 
-endpoint_url = "https://<databricks-workspace-url>/serving-endpoints/stockout-risk-classifier-endpoint/invocations"
-token = "<databricks-token>"
+DATABRICKS_HOST = "https://<your-databricks-workspace-url>"
+DATABRICKS_TOKEN = "<your-databricks-personal-access-token>"
+
+endpoint_name = "stockout-risk-classifier-endpoint"
+
+url = f"{DATABRICKS_HOST}/serving-endpoints/{endpoint_name}/invocations"
 
 headers = {
-    "Authorization": f"Bearer {token}",
+    "Authorization": f"Bearer {DATABRICKS_TOKEN}",
     "Content-Type": "application/json"
 }
 
 payload = {
     "dataframe_records": [
         {
-            "available_stock": 25,
+            "available_stock": 20,
             "avg_daily_sales": 8.5,
-            "days_of_inventory_remaining": 2.9,
+            "days_of_inventory_remaining": 2.35,
             "lead_time_days": 7,
             "reliability_score": 0.91,
             "category": "Home Decor",
@@ -293,35 +381,31 @@ payload = {
     ]
 }
 
-response = requests.post(
-    endpoint_url,
-    headers=headers,
-    data=json.dumps(payload)
-)
+response = requests.post(url, headers=headers, data=json.dumps(payload))
 
-print(response.status_code)
+print("Status code:", response.status_code)
+print("Response:")
 print(response.text)
 ```
 
-Do not commit real tokens to GitHub.
-
 ---
 
-## Example curl Test
+## Example curl Request
 
-The endpoint can also be tested with `curl`.
+Replace the workspace URL and token before running.
+
+Do not commit real tokens to GitHub.
 
 ```bash
-curl -X POST \
-  https://<databricks-workspace-url>/serving-endpoints/stockout-risk-classifier-endpoint/invocations \
-  -H "Authorization: Bearer <databricks-token>" \
+curl -X POST https://<your-databricks-workspace-url>/serving-endpoints/stockout-risk-classifier-endpoint/invocations \
+  -H "Authorization: Bearer <your-token>" \
   -H "Content-Type: application/json" \
   -d '{
     "dataframe_records": [
       {
-        "available_stock": 25,
+        "available_stock": 20,
         "avg_daily_sales": 8.5,
-        "days_of_inventory_remaining": 2.9,
+        "days_of_inventory_remaining": 2.35,
         "lead_time_days": 7,
         "reliability_score": 0.91,
         "category": "Home Decor",
@@ -331,116 +415,83 @@ curl -X POST \
   }'
 ```
 
-Do not commit real workspace URLs or tokens if the repository is public.
-
----
-
-## Serving Test Validation
-
-A successful serving test should confirm:
-
-- The endpoint is reachable
-- The request payload matches the model input schema
-- The response returns a prediction
-- The prediction is reasonable for the sample input
-- The result can be explained using the business context
-
-Example validation:
-
-```text
-Input available_stock = 25
-Input avg_daily_sales = 8.5
-Input lead_time_days = 7
-Calculated inventory days ≈ 2.9
-
-Since inventory days are less than supplier lead time, a High Risk prediction is reasonable.
-```
-
 ---
 
 ## Security Notes
 
-Do not store secrets in GitHub.
-
-Avoid committing:
+Do not commit any of the following to GitHub:
 
 ```text
 Databricks personal access tokens
-Workspace URLs with private identifiers
-Cluster IDs
-Endpoint credentials
-Production customer data
+Workspace secrets
+Private workspace URLs if they should not be public
+Service principal credentials
+Secret scope values
+Endpoint authentication headers
 ```
 
-Use environment variables or Databricks Secrets for production credentials.
+For production usage, secrets should be managed with Databricks secrets or another secure secret management system.
+
+Example placeholder:
+
+```python
+DATABRICKS_TOKEN = dbutils.secrets.get(
+    scope="<your-secret-scope>",
+    key="<your-token-key>"
+)
+```
 
 ---
 
-## Business Use Cases
+## Evidence to Capture
 
-The serving endpoint can support several business workflows.
+For project documentation, useful screenshots include:
 
-### Inventory Dashboard
+```text
+images/model_serving_endpoint_ready.png
+images/stockout_endpoint_response.png
+images/mlflow_experiments_screenshot.png
+```
 
-A dashboard can call the endpoint to show predicted risk levels for products and warehouses.
+Recommended screenshots:
 
-### Replenishment Workflow
+1. Model Serving endpoint page showing `Ready`
+2. Query response showing predictions
+3. MLflow Experiments UI showing model comparison
+4. Registered model page showing `@challenger` and `@champion` aliases
 
-A scheduled job can call the reorder model and create a list of products that need purchase orders.
-
-### Product Availability Alerts
-
-An alerting system can notify inventory managers when a product is predicted to be at high stockout risk.
-
-### Application Integration
-
-An internal inventory management application can send product and stock features to the endpoint and receive predictions in real time.
+Do not include access tokens or sensitive workspace details in screenshots.
 
 ---
 
-## Cloud Serving vs Local Serving
+## Production Considerations
 
-Databricks Model Serving provides:
+Before using this workflow in production, the following should be added:
 
-- Managed infrastructure
-- REST API endpoint
-- Integration with Unity Catalog models
-- Scalable cloud-hosted inference
-- Easier enterprise governance
-
-Local serving can be useful for:
-
-- Offline testing
-- Sovereign inference requirements
-- Cost-sensitive experiments
-- Data locality constraints
-
-In this project, Databricks Model Serving is the primary serving approach. Local inference can be added later as an extension.
+- Endpoint monitoring
+- Model drift monitoring
+- Data drift monitoring
+- Access controls
+- Secret management
+- CI/CD deployment process
+- Automated validation before promotion to `@champion`
+- Model performance tracking over time
+- Logging of prediction requests and responses where appropriate
 
 ---
 
 ## Summary
 
-This serving plan shows how the trained ML models can move from experimentation to production-style inference.
+This serving workflow demonstrates how trained ML models can move from experimentation to registry and inference.
 
-The full workflow is:
+The project includes:
 
-```text
-Gold Inventory Tables
-        ↓
-ML Training Dataset
-        ↓
-MLflow Experiment Tracking
-        ↓
-Best Model Selection
-        ↓
-Unity Catalog Model Registry
-        ↓
-@challenger Validation
-        ↓
-@champion Promotion
-        ↓
-Databricks Model Serving Endpoint
-        ↓
-Real-Time Prediction
-```
+- MLflow experiment tracking
+- Model comparison
+- Unity Catalog Model Registry
+- Model aliases for lifecycle management
+- Notebook-based champion model testing
+- Databricks Model Serving endpoint design
+- REST API request examples
+
+This completes the serving design for the stockout risk and reorder classification models.
