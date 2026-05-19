@@ -10,7 +10,8 @@ The project is extended in phases:
 
 - **Phase 1** focuses on sales transaction analytics.
 - **Phase 2** extends the project into an inventory management pipeline using multiple data sources and medallion architecture.
-- **Phase 3** extends the project with MLflow experiment tracking, model registration, and Databricks Model Serving.
+- **Phase 3** extends the project with MLflow experiment tracking, model registration, and model serving tests.
+- **Phase 4** adds a GenAI-style inventory RAG assistant with retrieval, business-priority ranking, and evaluation metrics.
 
 ---
 
@@ -65,6 +66,23 @@ It adds:
 - Databricks Model Serving endpoint
 - Model serving test notebook
 - Endpoint request and response documentation
+
+### Phase 4: GenAI Inventory RAG Assistant
+
+Phase 4 extends the project with a GenAI-style Retrieval-Augmented Generation workflow for inventory analytics.
+
+The goal is to create an assistant that can retrieve relevant product, inventory, supplier, stockout risk, and reorder context from the Gold inventory tables.
+
+Example business questions:
+
+```text
+Which products are at high stockout risk?
+Which products should be reordered?
+Why is product 85123A risky?
+Which supplier has the longest lead time?
+Which warehouse has the lowest available stock?
+Show products with low stock and high sales velocity.
+```
 
 ---
 
@@ -137,6 +155,12 @@ The ML training data is synthetically expanded from the inventory business rules
 - Matplotlib
 - Unity Catalog Model Registry
 - Databricks Model Serving
+- Retrieval-Augmented Generation
+- RAG evaluation metrics
+- MRR
+- Precision@k
+- Recall@k
+- NDCG@k
 
 ---
 
@@ -723,6 +747,169 @@ Databricks Model Serving Endpoint
 
 ---
 
+# Phase 4: GenAI Inventory RAG Assistant
+
+Phase 4 extends the project with a GenAI-style Retrieval-Augmented Generation workflow for inventory analytics.
+
+The goal is to create an assistant that can retrieve relevant product, inventory, supplier, stockout risk, and reorder context from the Gold inventory tables.
+
+Example business questions:
+
+```text
+Which products are at high stockout risk?
+Which products should be reordered?
+Why is product 85123A risky?
+Which supplier has the longest lead time?
+Which warehouse has the lowest available stock?
+Show products with low stock and high sales velocity.
+```
+
+---
+
+## Phase 4 Source Tables
+
+The RAG workflow uses Gold inventory tables created in Phase 2:
+
+```text
+workspace.retail_capstone.gold_inventory_status
+workspace.retail_capstone.gold_product_sales_velocity
+workspace.retail_capstone.gold_stockout_risk
+workspace.retail_capstone.gold_reorder_recommendations
+workspace.retail_capstone.gold_inventory_value
+```
+
+---
+
+## Inventory RAG Documents
+
+Structured Gold records are converted into natural language inventory documents.
+
+RAG document table:
+
+```text
+workspace.retail_capstone.inventory_rag_documents
+```
+
+Each document contains:
+
+- Product details
+- Warehouse details
+- Available stock
+- Average daily sales
+- Days of inventory remaining
+- Supplier lead time
+- Supplier reliability score
+- Stockout risk level
+- Reorder flag
+- Recommended reorder quantity
+- Inventory value
+
+---
+
+## Business Priority Score
+
+The project creates a business priority score to rank risky inventory records higher.
+
+Example score inputs:
+
+- Stockout risk level
+- Reorder flag
+- Supplier reliability score
+
+Example ranking idea:
+
+```text
+High Risk products and Reorder Needed products receive higher priority.
+Products from less reliable suppliers receive additional priority.
+```
+
+---
+
+## Retrieval and Ranking
+
+The retrieval notebook uses simple keyword-style retrieval and combines it with business priority.
+
+Ranking formula:
+
+```text
+final_score = retrieval_score * (0.6 + 0.4 * business_priority_score)
+```
+
+This mirrors the course concept of combining retrieval relevance with a quality or risk signal.
+
+In this project:
+
+```text
+quality signal = inventory business priority
+```
+
+---
+
+## Simple Assistant Response
+
+The retrieval notebook includes a simple answer generator that returns relevant inventory context for user questions.
+
+Example:
+
+```text
+Question: Which products should be reordered?
+
+Relevant inventory context:
+- Product 84406B has stockout risk 'High Risk' and reorder status 'Reorder Needed'.
+
+Recommendation:
+Review the highest-priority records first, especially products marked as High Risk or Reorder Needed.
+```
+
+---
+
+## RAG Evaluation
+
+The project includes a RAG evaluation notebook.
+
+Evaluation uses business queries such as:
+
+```text
+Which products are high stockout risk?
+Which products should be reordered?
+Which products have low available stock?
+Which suppliers have long lead times?
+Which products have high sales velocity?
+```
+
+Metrics calculated:
+
+- MRR
+- Precision@1
+- Precision@3
+- Precision@5
+- Recall@3
+- Recall@5
+- NDCG@3
+- NDCG@5
+
+The first version uses term-matching relevance. A future version can use LLM-judged relevance and a larger evaluation dataset.
+
+---
+
+## Phase 4 Pipeline Flow
+
+```text
+Gold Inventory KPI Tables
+        ↓
+Inventory RAG Documents
+        ↓
+Keyword Retrieval
+        ↓
+Business Priority Ranking
+        ↓
+Simple Assistant Answer
+        ↓
+RAG Evaluation Metrics
+```
+
+---
+
 ## Delta Lake Recovery
 
 The project includes a recovery runbook using:
@@ -787,6 +974,20 @@ Test Champion Models
 Deploy Model Serving Endpoint
 ```
 
+Phase 4 workflow:
+
+```text
+Gold Inventory KPI Tables
+      ↓
+Create Inventory RAG Documents
+      ↓
+Run Retrieval and Ranking
+      ↓
+Generate Simple Assistant Response
+      ↓
+Evaluate RAG Retrieval Metrics
+```
+
 Dedicated job compute is recommended for production scheduling because it provides reliability, isolation, and cost control.
 
 The workflow plan is available here:
@@ -835,6 +1036,15 @@ The `sql/ml_feature_queries.sql` file contains queries for:
 - Stockout label distribution
 - Reorder label distribution
 
+### RAG Inventory Queries
+
+The `sql/rag_inventory_queries.sql` file contains queries for:
+
+- Viewing inventory RAG documents
+- Finding high stockout risk documents
+- Finding reorder-needed documents
+- Ranking top business-priority inventory records
+
 ---
 
 ## Documentation
@@ -849,6 +1059,9 @@ docs/data_quality_rules.md
 docs/ml_modeling_plan.md
 docs/model_serving.md
 docs/enterprise_readiness.md
+docs/genai_rag_architecture.md
+docs/rag_evaluation_plan.md
+docs/genai_assistant_prompting.md
 ```
 
 ### Recovery Runbook
@@ -907,6 +1120,30 @@ docs/enterprise_readiness.md
 
 Explains workspace organization, Git integration, reproducibility, and production readiness considerations.
 
+### GenAI RAG Architecture
+
+```text
+docs/genai_rag_architecture.md
+```
+
+Explains the Phase 4 RAG assistant architecture, source tables, document creation, retrieval ranking, and future vector search improvements.
+
+### RAG Evaluation Plan
+
+```text
+docs/rag_evaluation_plan.md
+```
+
+Explains the retrieval evaluation approach, metrics, relevance method, and future LLM-as-judge improvements.
+
+### GenAI Assistant Prompting
+
+```text
+docs/genai_assistant_prompting.md
+```
+
+Defines prompt patterns, answer style, example user questions, and guardrails for the inventory assistant.
+
 ---
 
 ## Notebook Formats
@@ -935,7 +1172,13 @@ databricks-ecommerce-lakehouse-capstone/
 │   ├── 04_ml_stockout_and_reorder_training.py
 │   ├── 04_ml_stockout_and_reorder_training.ipynb
 │   ├── 05_model_serving_test.py
-│   └── 05_model_serving_test.ipynb
+│   ├── 05_model_serving_test.ipynb
+│   ├── 06_genai_inventory_rag_documents.py
+│   ├── 06_genai_inventory_rag_documents.ipynb
+│   ├── 07_genai_inventory_rag_retrieval.py
+│   ├── 07_genai_inventory_rag_retrieval.ipynb
+│   ├── 08_genai_rag_evaluation.py
+│   └── 08_genai_rag_evaluation.ipynb
 │
 ├── docs/
 │   ├── architecture.md
@@ -944,13 +1187,17 @@ databricks-ecommerce-lakehouse-capstone/
 │   ├── workflow_plan.md
 │   ├── ml_modeling_plan.md
 │   ├── model_serving.md
-│   └── enterprise_readiness.md
+│   ├── enterprise_readiness.md
+│   ├── genai_rag_architecture.md
+│   ├── rag_evaluation_plan.md
+│   └── genai_assistant_prompting.md
 │
 ├── sql/
 │   ├── dashboard_queries.sql
 │   ├── delta_time_travel.sql
 │   ├── inventory_kpi_queries.sql
-│   └── ml_feature_queries.sql
+│   ├── ml_feature_queries.sql
+│   └── rag_inventory_queries.sql
 │
 ├── data_samples/
 │   ├── products_sample.csv
@@ -960,7 +1207,8 @@ databricks-ecommerce-lakehouse-capstone/
 │
 └── images/
     ├── model_serving_endpoint_ready.png
-    └── stockout_endpoint_response.png
+    ├── stockout_endpoint_response.png
+    └── rag_evaluation_results.png
 ```
 
 ---
@@ -1001,6 +1249,16 @@ databricks-ecommerce-lakehouse-capstone/
 - Endpoint tested with sample request payload
 - Endpoint response documented
 - Model serving screenshots added
+- Phase 4 GenAI RAG architecture document
+- RAG evaluation plan
+- GenAI assistant prompting guide
+- Inventory RAG document table
+- RAG retrieval notebook
+- Business-priority ranking logic
+- Simple inventory assistant answer generation
+- RAG evaluation notebook
+- Retrieval metrics: MRR, Precision@k, Recall@k, NDCG@k
+- RAG inventory SQL queries
 
 ### Possible Future Improvements
 
@@ -1016,4 +1274,8 @@ databricks-ecommerce-lakehouse-capstone/
 - Add CI/CD workflow for notebook deployment
 - Add model monitoring and drift detection
 - Add Hugging Face or local MLflow model export workflow
-- Add sovereign/local inference comparison as an advanced extension
+- Add Databricks Vector Search
+- Add embedding model endpoint
+- Add LLM answer generation with a foundation model endpoint
+- Add LLM-as-judge relevance evaluation
+- Expand RAG evaluation dataset to 100–250 queries
