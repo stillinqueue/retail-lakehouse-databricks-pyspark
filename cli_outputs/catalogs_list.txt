@@ -1,0 +1,18 @@
+# Databricks CLI catalog list output
+
+Command:
+
+databricks catalogs list
+
+Expected verification:
+
+The output should include the project catalog or workspace catalog used by this project.
+
+Example:
+
+Name       Type
+workspace  MANAGED_CATALOG
+
+Note:
+
+Replace this placeholder with actual CLI output from your Databricks workspace if you have CLI access.
