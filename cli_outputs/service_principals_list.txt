@@ -1,0 +1,18 @@
+# Databricks CLI service principal list output
+
+Command:
+
+databricks service-principals list
+
+Expected verification:
+
+The output should include the project service principal.
+
+Example:
+
+Display Name             Application ID
+retail-capstone-job-sp   <application-id>
+
+Note:
+
+Replace this placeholder with actual CLI output from your Databricks workspace if you have admin and CLI access.
